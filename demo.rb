@@ -3,7 +3,7 @@ require 'json'
 require 'net/http'
 
 email = ARGV[0]
-id = ARGV[1..-1].map(&:to_i)
+id = ARGV[1..-1]
 
 def get_price(id)
   JSON.parse(Net::HTTP.get(URI("http://p.3.cn/prices/get?skuid=J_#{id}"))).first["p"].to_f
@@ -13,12 +13,12 @@ def get_url(id)
   "http://item.jd.com/#{id}.html"
 end
 
-price = Array.new(id.size, 0)
+price = id.each_with_object({}) {|id, h| h[id] = 0}
 while true
-  new_price = id.map {|i| get_price(i)}
-  new_price.map.with_index {|p, i| p == price[i] ? nil : i}.each do |i|
-    Pony.mail(:to => email, :subject => "New price: #{new_price[i]}", :body => get_url(id[i]))
+  price.keys.each do |id|
+    new_price = get_price(id)
+    Pony.mail(:to => email, :subject => "New price: #{new_price}", :body => get_url(id)) if new_price != price[id]
+    price[id] = new_price
   end
-  price = new_price
   sleep 60
 end
